@@ -228,7 +228,3 @@ hints = {
 *   本项目是优秀的 [`rxing`](https://github.com/rxing-core/rxing) 库的 Python 绑定。
 *   `rxing` 本身是原始 [`ZXing`](https://github.com/zxing/zxing) 库的一个移植。
 *   感谢 PyO3 和 Maturin 的开发者们，使得 Rust-Python 的互操作变得简单。
-
----
-*请将徽章URL中的 `your-username/rxing-python` 替换为您的实际 GitHub 仓库路径。*
-*请确保安装说明和徽章中的 PyPI 包名正确无误。*

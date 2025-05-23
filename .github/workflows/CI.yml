@@ -19,7 +19,115 @@ permissions:
   contents: read
 
 jobs:
+  rust_checks:
+    name: Rust Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint with Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run Rust tests
+        run: cargo test --all-features
+
+  python_lint:
+    name: Python Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Cache Pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # key 基于 requirements.txt 或 pyproject.toml (如果包含依赖)
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install linters
+        run: pip install ruff
+      - name: Run ruff check
+        run: ruff check .
+      - name: Run ruff format check
+        run: ruff format --check .
+        
+  python_tests:
+      name: Python Tests
+      needs: [rust_checks] # 假设 Rust 代码通过检查后才进行 Python 测试
+      strategy:
+        fail-fast: false
+        matrix:
+          python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+          os: [ubuntu-latest, windows-latest, macos-latest]
+          # 可以排除一些组合，如果它们不适用或太耗时
+          # exclude:
+          #   - os: macos-latest
+          #     python-version: '3.8'
+      runs-on: ${{ matrix.os }}
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Setup Rust toolchain
+          uses: actions-rust-lang/setup-rust-toolchain@v1
+        - name: Setup Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v5
+          with:
+            python-version: ${{ matrix.python-version }}
+        - name: Cache Cargo (shared with rust_checks or separate)
+          uses: actions/cache@v4
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }} # 可以用不同的key
+            restore-keys: |
+              ${{ runner.os }}-cargo-test-
+        - name: Cache Pip
+          uses: actions/cache@v4
+          with:
+            path: ~/.cache/pip
+            key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+            restore-keys: |
+              ${{ runner.os }}-${{ matrix.python-version }}-pip-
+        - name: Install Python dependencies
+          run: |
+            pip install maturin pytest
+            # 如果您有测试相关的依赖在 pyproject.toml 的 [project.optional-dependencies.test]
+            # pip install .[test]
+            # 或者 pip install -r requirements-dev.txt (如果使用 requirements 文件)
+        - name: Build and install rxing (development mode)
+          # 注意：如果您的 Rust 项目不在根目录，可能需要指定 --manifest-path
+          run: maturin develop --release # --release 是可选的，但推荐
+        - name: Run Python tests
+          # 假设您的测试在 tests/ 目录下，并且可以使用 pytest 自动发现
+          # 您的 tests/test_rxing.py 文件会被 pytest 找到
+          run: pytest tests/
+
   linux:
+    needs: [python_tests, python_lint]
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
@@ -55,6 +163,7 @@ jobs:
           path: dist
 
   musllinux:
+    needs: [python_tests, python_lint]
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
@@ -113,6 +222,7 @@ jobs:
           path: dist
 
   macos:
+    needs: [python_tests, python_lint]
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
@@ -153,29 +263,29 @@ jobs:
           name: wheels-sdist
           path: dist
 
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
-    needs: [linux, musllinux, windows, macos, sdist]
-    permissions:
-      # Use to sign the release artifacts
-      id-token: write
-      # Used to upload release artifacts
-      contents: write
-      # Used to generate artifact attestation
-      attestations: write
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: 'wheels-*/*'
-      - name: Publish to PyPI
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        with:
-          command: upload
-          args: --non-interactive --skip-existing wheels-*/*
+  # release:
+  #   name: Release
+  #   runs-on: ubuntu-latest
+  #   if: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+  #   needs: [linux, musllinux, windows, macos, sdist]
+  #   permissions:
+  #     # Use to sign the release artifacts
+  #     id-token: write
+  #     # Used to upload release artifacts
+  #     contents: write
+  #     # Used to generate artifact attestation
+  #     attestations: write
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #     - name: Generate artifact attestation
+  #       uses: actions/attest-build-provenance@v2
+  #       with:
+  #         subject-path: 'wheels-*/*'
+  #     - name: Publish to PyPI
+  #       if: ${{ startsWith(github.ref, 'refs/tags/') }}
+  #       uses: PyO3/maturin-action@v1
+  #       env:
+  #         MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+  #       with:
+  #         command: upload
+  #         args: --non-interactive --skip-existing wheels-*/*

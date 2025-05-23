@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/pypi/l/rxing.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python Versions](https://img.shields.io/pypi/pyversions/rxing.svg)](https://pypi.org/project/rxing/)
 
-**[中文说明 (View in Chinese)](README_zh.md)**
+**[简体中文 (View in Chinese)](README_zh.md)**
 
 `rxing-python` provides simple and efficient Python bindings for [`rxing`](https://crates.io/crates/rxing), a pure Rust port of the popular ZXing multi-format 1D/2D barcode image processing library. This package allows Python developers to easily decode and encode a wide variety of barcode formats using the speed and reliability of Rust.
 
@@ -225,7 +225,3 @@ This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENS
 *   This project is a Python binding for the excellent [`rxing`](https://github.com/rxing-core/rxing) library.
 *   `rxing` itself is a port of the original [`ZXing`](https://github.com/zxing/zxing) library.
 *   Thanks to the developers of PyO3 and Maturin for enabling easy Rust-Python interoperability.
-
----
-*Replace `your-username/rxing-python` in badge URLs with your actual GitHub repository path.*
-*Ensure the PyPI package name in installation instructions and badges is correct.*
