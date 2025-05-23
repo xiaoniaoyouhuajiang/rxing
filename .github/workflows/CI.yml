@@ -73,16 +73,12 @@ jobs:
         
   python_tests:
       name: Python Tests
-      needs: [rust_checks] # 假设 Rust 代码通过检查后才进行 Python 测试
+      needs: [rust_checks]
       strategy:
         fail-fast: false
         matrix:
           python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
           os: [ubuntu-latest, windows-latest, macos-latest]
-          # 可以排除一些组合，如果它们不适用或太耗时
-          # exclude:
-          #   - os: macos-latest
-          #     python-version: '3.8'
       runs-on: ${{ matrix.os }}
       steps:
         - name: Checkout code
@@ -93,6 +89,25 @@ jobs:
           uses: actions/setup-python@v5
           with:
             python-version: ${{ matrix.python-version }}
+              # 新增：创建虚拟环境并将其配置到当前作业后续步骤的环境中
+        - name: Create and configure virtual environment
+          run: |
+            python -m venv .venv
+            echo ".venv/bin" >> $GITHUB_PATH 
+            echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
+          shell: bash
+          if: runner.os != 'Windows'
+        - name: Create and configure virtual environment (Windows)
+          run: |
+            python -m venv .venv
+            echo ".venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            echo "VIRTUAL_ENV=$PWD\.venv" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          shell: pwsh
+          if: runner.os == 'Windows'
+        - name: Install Python dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install maturin pytest
         - name: Cache Cargo (shared with rust_checks or separate)
           uses: actions/cache@v4
           with:
@@ -119,11 +134,8 @@ jobs:
             # pip install .[test]
             # 或者 pip install -r requirements-dev.txt (如果使用 requirements 文件)
         - name: Build and install rxing (development mode)
-          # 注意：如果您的 Rust 项目不在根目录，可能需要指定 --manifest-path
           run: maturin develop --release # --release 是可选的，但推荐
         - name: Run Python tests
-          # 假设您的测试在 tests/ 目录下，并且可以使用 pytest 自动发现
-          # 您的 tests/test_rxing.py 文件会被 pytest 找到
           run: pytest tests/
 
   linux:
