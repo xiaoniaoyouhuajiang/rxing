@@ -12,7 +12,13 @@ on:
       - master
     tags:
       - '*'
+    paths-ignore: 
+      - '**.md'     
+      - 'docs/**'   
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -291,6 +297,18 @@ jobs:
 
       - name: List downloaded files
         run: ls -R dist
+
+      - name: Verify pyproject.toml
+        run: |
+          echo "Current PWD: $(pwd)"
+          echo "Workspace content:"
+          ls -la ${{ github.workspace }}
+          if [ -f "${{ github.workspace }}/pyproject.toml" ]; then
+            echo "pyproject.toml FOUND at ${{ github.workspace }}/pyproject.toml"
+          else
+            echo "pyproject.toml NOT FOUND at ${{ github.workspace }}/pyproject.toml - THIS IS THE PROBLEM!"
+            exit 1
+          fi
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1

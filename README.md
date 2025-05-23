@@ -46,8 +46,6 @@ pip install rxing
 This will also install the necessary dependencies: `Pillow` and `NumPy`.
 Ensure you have a compatible Rust toolchain if building from source. Pre-built wheels are provided for common platforms.
 
-*(Note: The actual PyPI package name might differ; replace `rxing` with the correct name if needed.)*
-
 ## Quickstart
 
 Here's how you can quickly get started with decoding and encoding barcodes.
@@ -218,7 +216,6 @@ If you plan to contribute, please:
 ## License
 
 This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
-(This assumes you will add an Apache-2.0 LICENSE file, consistent with `rxing`.)
 
 ## Acknowledgements
 
