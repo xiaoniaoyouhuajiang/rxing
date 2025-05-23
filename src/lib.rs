@@ -1,18 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use rxing::{
-    BarcodeFormat,
-    BinaryBitmap,
-    BufferedImageLuminanceSource,
-    DecodeHints as RxingDecodeHints,
-    EncodeHints as RxingEncodeHints,
-    Luma8LuminanceSource,
-    MultiFormatReader,
-    MultiFormatWriter,
-    RXingResult as InnerRXingResult,
-    Reader,
-    Writer,
-    common::HybridBinarizer,
+    common::HybridBinarizer, BarcodeFormat, BinaryBitmap, BufferedImageLuminanceSource,
+    DecodeHints as RxingDecodeHints, EncodeHints as RxingEncodeHints, Luma8LuminanceSource,
+    MultiFormatReader, MultiFormatWriter, RXingResult as InnerRXingResult, Reader, Writer,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -108,7 +99,10 @@ impl From<rxing::common::BitMatrix> for PyBitMatrix {
     }
 }
 
-fn py_dict_to_decode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyResult<RxingDecodeHints> {
+fn py_dict_to_decode_hints(
+    _py: Python,
+    dict_opt: Option<&Bound<PyDict>>,
+) -> PyResult<RxingDecodeHints> {
     let mut hints = RxingDecodeHints::default();
     if let Some(dict) = dict_opt {
         for (key_any, value_any) in dict.iter() {
@@ -117,8 +111,11 @@ fn py_dict_to_decode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyR
                 "TRY_HARDER" => hints.TryHarder = Some(value_any.extract()?),
                 "PURE_BARCODE" => hints.PureBarcode = Some(value_any.extract()?),
                 "POSSIBLE_FORMATS" => {
-                    let formats_list: &Bound<PyList> = value_any.downcast()
-                        .map_err(|_| PyErr::new::<pyo3::exceptions::PyTypeError,_>("POSSIBLE_FORMATS value must be a list of strings"))?;
+                    let formats_list: &Bound<PyList> = value_any.downcast().map_err(|_| {
+                        PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                            "POSSIBLE_FORMATS value must be a list of strings",
+                        )
+                    })?;
                     let mut possible_formats = HashSet::new();
                     for format_any in formats_list.iter() {
                         let format_str: String = format_any.extract()?;
@@ -133,7 +130,7 @@ fn py_dict_to_decode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyR
                 "ALSO_INVERTED" => hints.AlsoInverted = Some(value_any.extract()?),
                 // TODO: Implement more hint conversions as needed
                 _ => {
-                     eprintln!("Warning: Unknown decode hint: {}", key_str);
+                    eprintln!("Warning: Unknown decode hint: {}", key_str);
                 }
             }
         }
@@ -141,9 +138,12 @@ fn py_dict_to_decode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyR
     Ok(hints)
 }
 
-fn py_dict_to_encode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyResult<RxingEncodeHints> {
+fn py_dict_to_encode_hints(
+    _py: Python,
+    dict_opt: Option<&Bound<PyDict>>,
+) -> PyResult<RxingEncodeHints> {
     let mut hints = RxingEncodeHints::default();
-     if let Some(dict) = dict_opt {
+    if let Some(dict) = dict_opt {
         for (key_any, value_any) in dict.iter() {
             let key_str: String = key_any.extract()?;
             match key_str.to_uppercase().as_str() {
@@ -152,7 +152,7 @@ fn py_dict_to_encode_hints(_py: Python, dict_opt: Option<&Bound<PyDict>>) -> PyR
                 "MARGIN" => hints.Margin = Some(value_any.extract()?),
                 "QR_VERSION" => hints.QrVersion = Some(value_any.extract()?),
                 _ => {
-                     eprintln!("Warning: Unknown encode hint: {}", key_str);
+                    eprintln!("Warning: Unknown encode hint: {}", key_str);
                 }
             }
         }
@@ -273,7 +273,7 @@ fn encode(
     let barcode_format = BarcodeFormat::from(format.to_uppercase());
 
     let hints = py_dict_to_encode_hints(py, hints_dict)?;
-    let writer = MultiFormatWriter::default();
+    let writer = MultiFormatWriter;
 
     match writer.encode_with_hints(data, &barcode_format, width, height, &hints) {
         Ok(bit_matrix) => Ok(PyBitMatrix::from(bit_matrix)),
@@ -315,7 +315,10 @@ fn rxing_py_module(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     py_barcode_format_module.add("RSS_EXPANDED", BarcodeFormat::RSS_EXPANDED.to_string())?;
     py_barcode_format_module.add("UPC_A", BarcodeFormat::UPC_A.to_string())?;
     py_barcode_format_module.add("UPC_E", BarcodeFormat::UPC_E.to_string())?;
-    py_barcode_format_module.add("UPC_EAN_EXTENSION", BarcodeFormat::UPC_EAN_EXTENSION.to_string())?;
+    py_barcode_format_module.add(
+        "UPC_EAN_EXTENSION",
+        BarcodeFormat::UPC_EAN_EXTENSION.to_string(),
+    )?;
     m.add_submodule(&py_barcode_format_module)?;
 
     Ok(())
