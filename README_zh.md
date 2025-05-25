@@ -1,13 +1,29 @@
-# rxing-python: rxing Rust 库的 Python 绑定
+# rxing-python:
 
 [![PyPI version](https://img.shields.io/pypi/v/rxing.svg)](https://pypi.org/project/rxing/)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/your-username/rxing-python/ci.yml?branch=main)](https://github.com/your-username/rxing-python/actions) 
-[![License](https://img.shields.io/pypi/l/rxing.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python Versions](https://img.shields.io/pypi/pyversions/rxing.svg)](https://pypi.org/project/rxing/)
+[![CI](https://github.com/xiaoniaoyouhuajiang/rxing/actions/workflows/CI.yml/badge.svg)](https://github.com/xiaoniaoyouhuajiang/rxing/actions/workflows/CI.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![](https://img.shields.io/badge/python-3.8+-blue.svg)]
+---
+rxing Rust 库的 Python 绑定
 
-**[View in English (查看英文版)](README.md)**
+**decode: 一个dm-code案例**
 
-`rxing-python` 为 [`rxing`](https://crates.io/crates/rxing)（一个纯 Rust 实现的流行 ZXing 多格式一维/二维条码图像处理库）提供了简洁高效的 Python 绑定。该软件包使 Python 开发者能够利用 Rust 的速度和可靠性，轻松解码和编码多种条码格式。
+![dm-code](./assets/dm_code.png)
+
+```python
+>>> from rxing import decode
+>>> print(decode("./assets/dm_code.png").text)
+hello, world
+```
+
+**encode: 一个qr-code案例**
+![](./assets/qr_qncode_example.png)
+
+
+**[View in English](README.md)**
+
+`rxing` 为 [`rxing`](https://crates.io/crates/rxing)（一个纯 Rust 实现的流行 ZXing 多格式一维/二维条码图像处理库）提供了简洁高效的 Python 绑定。该软件包使 Python 开发者能够利用 Rust 的速度和可靠性，轻松解码和编码多种条码格式。
 
 ## 特性
 
@@ -37,14 +53,11 @@
 
 ## 安装
 
-您可以使用 pip 安装 `rxing-python`：
+您可以使用 pip 安装 `rxing`：
 
 ```bash
 pip install rxing
 ```
-
-这也会安装必要的依赖项：`Pillow` 和 `NumPy`。
-如果从源代码构建，请确保您拥有兼容的 Rust 工具链。我们为常用平台提供了预编译的 wheel 包。
 
 ## 快速上手
 
