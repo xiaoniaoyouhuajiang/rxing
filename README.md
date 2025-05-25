@@ -222,8 +222,7 @@ If you plan to contribute, please:
 1.  Fork the repository.
 2.  Create a new branch for your feature or bug fix.
 3.  Develop and test your changes.
-4.  Ensure your code follows existing style and add tests if applicable.
-5.  Submit a pull request.
+4.  Submit a pull request.
 
 ## License
 
