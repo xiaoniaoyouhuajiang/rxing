@@ -1,13 +1,28 @@
-# rxing-python: Python Bindings for the rxing Rust Library
+# rxing-python
 
 [![PyPI version](https://img.shields.io/pypi/v/rxing.svg)](https://pypi.org/project/rxing/)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/your-username/rxing-python/ci.yml?branch=main)](https://github.com/your-username/rxing-python/actions) 
-[![License](https://img.shields.io/pypi/l/rxing.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python Versions](https://img.shields.io/pypi/pyversions/rxing.svg)](https://pypi.org/project/rxing/)
+[![CI](https://github.com/xiaoniaoyouhuajiang/rxing/actions/workflows/CI.yml/badge.svg)](https://github.com/xiaoniaoyouhuajiang/rxing/actions/workflows/CI.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![](https://img.shields.io/badge/python-3.8+-blue.svg)]
+---
+Python Bindings for the rxing Rust Library
 
-**[简体中文 (View in Chinese)](README_zh.md)**
+**decode: a dm-code example**
 
-`rxing-python` provides simple and efficient Python bindings for [`rxing`](https://crates.io/crates/rxing), a pure Rust port of the popular ZXing multi-format 1D/2D barcode image processing library. This package allows Python developers to easily decode and encode a wide variety of barcode formats using the speed and reliability of Rust.
+![dm-code](./assets/dm_code.png)
+
+```python
+>>> from rxing import decode
+>>> print(decode("./assets/dm_code.png").text)
+hello, world
+```
+
+**encode: a qr-code example**
+![](./assets/qr_qncode_example.png)
+
+**[简体中文](README_zh.md)**
+
+`rxing` provides simple and efficient Python bindings for [`rxing`](https://crates.io/crates/rxing), a pure Rust port of the popular ZXing multi-format 1D/2D barcode image processing library. This package allows Python developers to easily decode and encode a wide variety of barcode formats using the speed and reliability of Rust.
 
 ## Features
 
@@ -37,14 +52,11 @@
 
 ## Installation
 
-You can install `rxing-python` using pip:
+You can install `rxing` using pip:
 
 ```bash
 pip install rxing
 ```
-
-This will also install the necessary dependencies: `Pillow` and `NumPy`.
-Ensure you have a compatible Rust toolchain if building from source. Pre-built wheels are provided for common platforms.
 
 ## Quickstart
 
@@ -210,8 +222,7 @@ If you plan to contribute, please:
 1.  Fork the repository.
 2.  Create a new branch for your feature or bug fix.
 3.  Develop and test your changes.
-4.  Ensure your code follows existing style and add tests if applicable.
-5.  Submit a pull request.
+4.  Submit a pull request.
 
 ## License
 
