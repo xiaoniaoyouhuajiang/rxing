@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+pub mod detection;
 use rxing::{
     common::HybridBinarizer, BarcodeFormat, BinaryBitmap, BufferedImageLuminanceSource,
     DecodeHints as RxingDecodeHints, EncodeHints as RxingEncodeHints, Luma8LuminanceSource,
