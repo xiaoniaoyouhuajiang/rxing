@@ -144,18 +144,18 @@ fn correct_perspective(
         let (sx, sy) = (src_pts[i][0], src_pts[i][1]);
         let (dx, dy) = (dst_pts[i][0], dst_pts[i][1]);
         unsafe {
-            a.write_unchecked(2 * i, 3, -sx); 
-            a.write_unchecked(2 * i, 4, -sy); 
-            a.write_unchecked(2 * i, 5, -1.0);
-            a.write_unchecked(2 * i, 6, dy * sx); 
-            a.write_unchecked(2 * i, 7, dy * sy); 
-            a.write_unchecked(2 * i, 8, dy);
-            a.write_unchecked(2 * i + 1, 0, sx); 
-            a.write_unchecked(2 * i + 1, 1, sy); 
-            a.write_unchecked(2 * i + 1, 2, 1.0);
-            a.write_unchecked(2 * i + 1, 6, -dx * sx); 
-            a.write_unchecked(2 * i + 1, 7, -dx * sy); 
-            a.write_unchecked(2 * i + 1, 8, -dx);
+            a.write_unchecked(2 * i, 0, sx); 
+            a.write_unchecked(2 * i, 1, sy); 
+            a.write_unchecked(2 * i, 2, 1.0);
+            a.write_unchecked(2 * i, 6, -dx * sx); 
+            a.write_unchecked(2 * i, 7, -dx * sy); 
+            a.write_unchecked(2 * i, 8, -dx);
+            a.write_unchecked(2 * i + 1, 3, sx); 
+            a.write_unchecked(2 * i + 1, 4, sy); 
+            a.write_unchecked(2 * i + 1, 5, 1.0);
+            a.write_unchecked(2 * i + 1, 6, -dy * sx); 
+            a.write_unchecked(2 * i + 1, 7, -dy * sy); 
+            a.write_unchecked(2 * i + 1, 8, -dy);
         }
     }
     
@@ -168,7 +168,7 @@ fn correct_perspective(
     // 5. 应用变换
     let corrected_image = warp(
         &image,
-        &proj.invert(), // warp 需要从目标到源的映射，所以要取逆
+        &proj,
         Interpolation::Bilinear,
         Rgb([0, 0, 0]),
     );
@@ -177,6 +177,7 @@ fn correct_perspective(
     Ok(cropped.into())
 }
 
+#[allow(unused_imports)]
 mod test{
     use std::path::PathBuf;
 
@@ -184,13 +185,14 @@ mod test{
 
     use super::*;
     use image::open;
+    use rxing::{common::HybridBinarizer, BufferedImageLuminanceSource, Reader};
     use usls::Image;
 
     #[test]
     fn test_correct_perspective() {
         let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/multi_qr.jpg";
+        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
@@ -199,5 +201,27 @@ mod test{
         let corrected = correct_perspective(image, results[0].quad_xy)
             .expect("Failed to correct perspective");
         corrected.save("/Users/wangjiajie/software/rxing/assets/corrected_perspective.png").expect("Failed to save corrected image");
+    }
+
+    #[test]
+    fn test_enhance_and_decode_qr() {
+        let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let mut detector = YoloQrDetector::new(&model_path);
+        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let images = Image::try_read(image_path)
+            .expect("Failed to read image");
+        let image = images.to_rgb8();
+        let results = detector.detect(images);
+        assert!(!results.is_empty(), "No detection results found");
+
+        let decoded = enhance_and_decode_qr(&image.into(), &results[0], |img: &DynamicImage| {
+            let luma_source = BufferedImageLuminanceSource::new(img.clone());
+            let binarizer = HybridBinarizer::new(luma_source);
+            let mut binary_bitmap = rxing::BinaryBitmap::new(binarizer);
+            let mut reader = rxing::qrcode::QRCodeReader::new();
+            reader.decode(&mut binary_bitmap).ok().map(|result| result.getText().to_string())
+        });
+        assert!(decoded.is_some(), "Failed to decode QR code");
+        println!("Decoded QR code: {:?}", decoded);
     }
 }

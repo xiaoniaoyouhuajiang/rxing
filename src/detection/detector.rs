@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Result, anyhow};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use imageproc::{contours::{find_contours_with_threshold, Contour}, geometry::{approximate_polygon_dp, arc_length}};
+use imageproc::{contours::{find_contours_with_threshold, Contour}};
 use usls::{models::YOLO, Config, Image, Y};
 use rxing::BarcodeFormat;
 
@@ -65,34 +65,13 @@ pub fn y_to_detection_results(y: Y) -> Result<Vec<DetectionResult>> {
 
             let qr_contour = contours.iter().max_by_key(|c| c.points.len())?;
 
-            let perimeter = arc_length(&qr_contour.points, true);
-            let mut final_corners = None;
-            for i in 1..=10 { // try to tune from 1% to 10% of the perimeter
-                let epsilon = (i as f64) * 0.01 * perimeter;
-                let corners = approximate_polygon_dp(&qr_contour.points, epsilon, true);
-                if corners.len() == 4 {
-                    final_corners = Some(corners);
-                    break;
-                }
-                if corners.len() < 4 && i > 2 { // i > 2 是为了防止过早退出
-                    break;
-                }
-            }
+            if qr_contour.points.len() >= 4 {
+                let qr_contour_points = qr_contour.points.clone();
 
-            // 如果成功简化为四边形，则处理；否则忽略此检测结果
-            if let Some(corners) = final_corners {
-                let mut sorted_corners = corners;
-
-                // 第一次排序
-                sorted_corners.sort_by_key(|p| p.y + p.x);
-                let top_left = sorted_corners[0];
-                let bottom_right = sorted_corners[3];
-            
-                // 第二次排序
-                sorted_corners.sort_by_key(|p| p.y - p.x);
-                let bottom_left = sorted_corners[0];
-                let top_right = sorted_corners[3];
-            
+                let top_left = qr_contour_points.iter().min_by_key(|p| p.x + p.y)?;
+                let bottom_right = qr_contour_points.iter().max_by_key(|p| p.x + p.y)?;
+                let top_right = qr_contour_points.iter().min_by_key(|p| p.y - p.x)?;
+                let bottom_left = qr_contour_points.iter().max_by_key(|p| p.y - p.x)?;
                 // 重新按期望顺序组装
                 let ordered_corners = [top_left, top_right, bottom_right, bottom_left];
                 
