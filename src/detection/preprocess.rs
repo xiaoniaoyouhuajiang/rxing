@@ -4,13 +4,14 @@ use imageproc::{
     contrast::{self, ThresholdType}, filter,
     geometric_transformations::{warp, Interpolation, Projection},
 };
+use rayon::prelude::*;
 use std::convert::TryInto;
 
 
 pub fn enhance_and_decode_qr(
     full_image: &DynamicImage,
     detection: &super::detector::DetectionResult,
-    decoder: impl Fn(&DynamicImage) -> Option<String>,
+    decoder: &(impl Fn(&DynamicImage) -> Option<String> + Sync),
 ) -> Option<String> {
     let [x_min, y_min, x_max, y_max] = detection.bbox_xyxy;
     let cropped_bbox = full_image.crop_imm(
@@ -27,13 +28,17 @@ pub fn enhance_and_decode_qr(
     };
 
     let corrections = [
-        ("cropped_bbox", cropped_bbox),
-        ("corrected_perspective", corrected_perspective.into()),
+        cropped_bbox,
+        corrected_perspective,
     ];
+    let scale_factors = [1.0, 0.5, 2.0, 0.25, 3.0, 4.0];
 
-    // 2. 迭代增强循环 (Enhancement Loop)
-    for (_label, base_image) in &corrections {
-        for scale_factor in [1.0, 0.5, 2.0, 0.25, 3.0, 4.0] {
+    // 2. 使用 Rayon 并行化增强和解码循环
+    corrections.into_par_iter()
+        .flat_map(|base_image| {
+            scale_factors.into_par_iter().map(move |scale_factor| (base_image.clone(), scale_factor))
+        })
+        .find_map_any(|(base_image, scale_factor)| {
             let (base_w, base_h) = base_image.dimensions();
             let (new_w, new_h) = (
                 (base_w as f32 * scale_factor) as u32,
@@ -41,11 +46,11 @@ pub fn enhance_and_decode_qr(
             );
 
             if new_w < 25 || new_h < 25 || new_w > 1024 || new_h > 1024 {
-                continue;
+                return None;
             }
             
             let resized_image = image::imageops::resize(
-                base_image,
+                &base_image,
                 new_w,
                 new_h,
                 image::imageops::FilterType::Triangle,
@@ -65,13 +70,12 @@ pub fn enhance_and_decode_qr(
 
             // c) 灰度图 + 高级增强
             let gray_image = image::imageops::grayscale(&resized_image);
-            if let Some(decoded) = try_advanced_decodings(&gray_image, &decoder) {
+            if let Some(decoded) = try_advanced_decodings(&gray_image, decoder) {
                 return Some(decoded);
             }
-        }
-    }
-
-    None
+            
+            None
+        })
 }
 
 /// 对灰度图应用高级解码策略（Otsu, Blur, Sharpen）
@@ -208,15 +212,45 @@ mod test{
         assert!(!results.is_empty(), "No detection results found");
 
         let start_time = std::time::Instant::now();
-        let decoded = enhance_and_decode_qr(&image.into(), &results[0], |img: &DynamicImage| {
+        // The decoder closure is now Fn + Sync because the reader is created inside.
+        let decoder_closure = |img: &DynamicImage| {
             let luma_source = BufferedImageLuminanceSource::new(img.clone());
             let binarizer = HybridBinarizer::new(luma_source);
             let mut binary_bitmap = rxing::BinaryBitmap::new(binarizer);
-            let mut reader = rxing::qrcode::QRCodeReader::new();
+            // Create a new reader for each attempt. This is cheap and ensures thread safety.
+            let mut reader = rxing::qrcode::QRCodeReader::new(); 
             reader.decode(&mut binary_bitmap).ok().map(|result| result.getText().to_string())
-        });
+        };
+        let decoded = enhance_and_decode_qr(&image.into(), &results[0], &decoder_closure);
         println!("Time taken: {:?}", start_time.elapsed());
         // assert!(decoded.is_some(), "Failed to decode QR code");
         println!("Decoded QR code: {:?}", decoded);
     }
+
+    #[test]
+    fn test_normal_qr_pipeline() {
+        let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let mut detector = YoloQrDetector::new(&model_path);
+        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let images = Image::try_read(image_path)
+            .expect("Failed to read image");
+        let image = images.to_rgb8();
+        let results = detector.detect(images);
+        assert!(!results.is_empty(), "No detection results found");
+
+        let start_time = std::time::Instant::now();
+        // The decoder closure is now Fn + Sync because the reader is created inside.
+        let decoder_closure = |img: &DynamicImage| {
+            let luma_source = BufferedImageLuminanceSource::new(img.clone());
+            let binarizer = HybridBinarizer::new(luma_source);
+            let mut binary_bitmap = rxing::BinaryBitmap::new(binarizer);
+            // Create a new reader for each attempt. This is cheap and ensures thread safety.
+            let mut reader = rxing::qrcode::QRCodeReader::new(); 
+            reader.decode(&mut binary_bitmap).ok().map(|result| result.getText().to_string())
+        };
+        let decoded = enhance_and_decode_qr(&image.into(), &results[0], &decoder_closure);
+        println!("Time taken: {:?}", start_time.elapsed());
+        // assert!(decoded.is_some(), "Failed to decode QR code");
+        println!("Decoded QR code: {:?}", decoded);
+    }    
 }
