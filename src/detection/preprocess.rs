@@ -78,40 +78,53 @@ pub fn enhance_and_decode_qr(
         })
 }
 
-/// 对灰度图应用高级解码策略（Otsu, Blur, Sharpen）
+// 定义一个枚举来表示不同的高级增强策略
+#[derive(Clone, Copy)]
+enum AdvancedEnhancement {
+    Direct,
+    Otsu,
+    GaussianBlur(f32),
+    Sharpen,
+}
+
+/// 对灰度图应用高级解码策略（Otsu, Blur, Sharpen），并行执行
 fn try_advanced_decodings(
     gray_image: &GrayImage,
-    decoder: &impl Fn(&DynamicImage) -> Option<String>,
+    decoder: &(impl Fn(&DynamicImage) -> Option<String> + Sync),
 ) -> Option<String> {
-    // a) 直接解码灰度图
-    if let Some(decoded) = decoder(&gray_image.clone().into()) {
-        return Some(decoded);
-    }
+    let strategies = [
+        AdvancedEnhancement::Direct,
+        AdvancedEnhancement::Otsu,
+        AdvancedEnhancement::GaussianBlur(1.5),
+        AdvancedEnhancement::GaussianBlur(2.5),
+        AdvancedEnhancement::Sharpen,
+    ];
 
-    // b) Otsu自适应二值化  (usls的DB和YOLOP模型后处理都用到了imageproc的轮廓查找，证明其可用)
-    // `otsu_level` 计算阈值，`threshold` 应用阈值
-    let otsu_threshold = contrast::otsu_level(gray_image);
-    let binary_image = contrast::threshold(gray_image, otsu_threshold, ThresholdType::Binary);
-    if let Some(decoded) = decoder(&binary_image.into()) {
-        return Some(decoded);
-    }
-    
-    // c) 模糊后解码 (对应 qreader 中的 blur_kernel_sizes)
-    for sigma in [1.5, 2.5] { // 约对应 (5,5) 和 (7,7) 核
-        let blurred = filter::gaussian_blur_f32(gray_image, sigma);
-        if let Some(decoded) = decoder(&image::DynamicImage::ImageLuma8(blurred)) {
-            return Some(decoded);
+    strategies.into_par_iter().find_map_any(|strategy| {
+        match strategy {
+            AdvancedEnhancement::Direct => {
+                // a) 直接解码灰度图
+                decoder(&gray_image.clone().into())
+            }
+            AdvancedEnhancement::Otsu => {
+                // b) Otsu自适应二值化
+                let otsu_threshold = contrast::otsu_level(gray_image);
+                let binary_image = contrast::threshold(gray_image, otsu_threshold, ThresholdType::Binary);
+                decoder(&binary_image.into())
+            }
+            AdvancedEnhancement::GaussianBlur(sigma) => {
+                // c) 模糊后解码
+                let blurred = filter::gaussian_blur_f32(gray_image, sigma);
+                decoder(&image::DynamicImage::ImageLuma8(blurred))
+            }
+            AdvancedEnhancement::Sharpen => {
+                // d) 锐化后解码
+                let sharpen_kernel = [-1.0f32, -1.0, -1.0, -1.0, 9.0, -1.0, -1.0, -1.0, -1.0];
+                let sharpened: GrayImage = filter::filter3x3::<Luma<u8>, f32, _>(gray_image, &sharpen_kernel);
+                decoder(&sharpened.into())
+            }
         }
-    }
-
-    // d) 锐化后解码
-    let sharpen_kernel = [-1.0f32, -1.0, -1.0, -1.0, 9.0, -1.0, -1.0, -1.0, -1.0];
-    let sharpened: GrayImage = filter::filter3x3::<Luma<u8>, f32, _>(gray_image, &sharpen_kernel);
-    if let Some(decoded) = decoder(&sharpened.into()) {
-        return Some(decoded);
-    }
-
-    None
+    })
 }
 
 
