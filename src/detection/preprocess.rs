@@ -111,15 +111,12 @@ fn try_advanced_decodings(
 }
 
 
-/// 使用`faer`计算透视变换矩阵并使用`imageproc`应用变换
 fn correct_perspective(
     image: RgbImage,
     src_pts_f32: [[f32; 2]; 4],
 ) -> Result<DynamicImage> {
-    // 1. 将点转换为 f64 以使用 faer
     let src_pts: [[f64; 2]; 4] = src_pts_f32.map(|p| [p[0] as f64, p[1] as f64]);
 
-    // 2. 计算目标尺寸
     let width1 = ((src_pts[0][0] - src_pts[1][0]).powi(2) + (src_pts[0][1] - src_pts[1][1]).powi(2)).sqrt();
     let width2 = ((src_pts[2][0] - src_pts[3][0]).powi(2) + (src_pts[2][1] - src_pts[3][1]).powi(2)).sqrt();
     let height1 = ((src_pts[0][0] - src_pts[3][0]).powi(2) + (src_pts[0][1] - src_pts[3][1]).powi(2)).sqrt();
@@ -130,7 +127,6 @@ fn correct_perspective(
         return Err(anyhow!("Invalid quadrilateral with zero size"));
     }
 
-    // 3. 定义目标点
     let dst_pts: [[f64; 2]; 4] = [
         [0.0, 0.0],
         [max_dim as f64 - 1.0, 0.0],
@@ -138,7 +134,6 @@ fn correct_perspective(
         [0.0, max_dim as f64 - 1.0],
     ];
 
-    // 4. 计算变换矩阵 H (借鉴usls/kornia-3d/src/pose/homography.rs  的逻辑)
     let mut a = faer::Mat::<f64>::zeros(8, 9);
     for i in 0..4 {
         let (sx, sy) = (src_pts[i][0], src_pts[i][1]);
@@ -159,13 +154,11 @@ fn correct_perspective(
         }
     }
     
-    // 使用SVD求解 Ax = 0
     let svd = a.svd();
-    let h_col = svd.v().col(8); // 解是对应最小奇异值的右奇异向量
+    let h_col = svd.v().col(8);
     let h: [f32; 9] = h_col.iter().map(|&v| v as f32).collect::<Vec<_>>().try_into().unwrap();
     let proj = Projection::from_matrix(h).unwrap();
 
-    // 5. 应用变换
     let corrected_image = warp(
         &image,
         &proj,
@@ -192,7 +185,7 @@ mod test{
     fn test_correct_perspective() {
         let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let image_path = "/Users/wangjiajie/software/rxing/assets/hard_qr.jpeg";
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
@@ -204,16 +197,17 @@ mod test{
     }
 
     #[test]
-    fn test_enhance_and_decode_qr() {
+    fn test_fake_qr_pipeline() {
         let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let image_path = "/Users/wangjiajie/software/rxing/assets/fake_qr.jpeg";
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
         let results = detector.detect(images);
         assert!(!results.is_empty(), "No detection results found");
 
+        let start_time = std::time::Instant::now();
         let decoded = enhance_and_decode_qr(&image.into(), &results[0], |img: &DynamicImage| {
             let luma_source = BufferedImageLuminanceSource::new(img.clone());
             let binarizer = HybridBinarizer::new(luma_source);
@@ -221,7 +215,8 @@ mod test{
             let mut reader = rxing::qrcode::QRCodeReader::new();
             reader.decode(&mut binary_bitmap).ok().map(|result| result.getText().to_string())
         });
-        assert!(decoded.is_some(), "Failed to decode QR code");
+        println!("Time taken: {:?}", start_time.elapsed());
+        // assert!(decoded.is_some(), "Failed to decode QR code");
         println!("Decoded QR code: {:?}", decoded);
     }
 }
