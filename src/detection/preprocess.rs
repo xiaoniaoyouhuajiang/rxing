@@ -187,11 +187,11 @@ fn correct_perspective(
     Ok(cropped.into())
 }
 
-#[allow(unused_imports)]
+#[allow(unused_imports, dead_code)]
 mod test{
     use std::path::PathBuf;
 
-    use crate::detection::detector::{Detector, YoloQrDetector};
+    use crate::detection::{detector::{Detector, YoloQrDetector}, resource::{get_asset_path, get_or_download_model_path}};
 
     use super::*;
     use image::open;
@@ -200,9 +200,9 @@ mod test{
 
     #[test]
     fn test_correct_perspective() {
-        let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let model_path: PathBuf = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/hard_qr.jpeg";
+        let image_path = get_asset_path("qr_entity.png");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
@@ -215,9 +215,9 @@ mod test{
 
     #[test]
     fn test_fake_qr_pipeline() {
-        let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let model_path: PathBuf = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/fake_qr.jpeg";
+        let image_path = get_asset_path("fake_qr.jpeg");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
@@ -236,15 +236,14 @@ mod test{
         };
         let decoded = enhance_and_decode_qr(&image.into(), &results[0], &decoder_closure);
         println!("Time taken: {:?}", start_time.elapsed());
-        // assert!(decoded.is_some(), "Failed to decode QR code");
         println!("Decoded QR code: {:?}", decoded);
     }
 
     #[test]
     fn test_normal_qr_pipeline() {
-        let model_path: PathBuf = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let model_path: PathBuf = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let image_path = get_asset_path("multi_qr.jpg");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
@@ -263,7 +262,7 @@ mod test{
         };
         let decoded = enhance_and_decode_qr(&image.into(), &results[0], &decoder_closure);
         println!("Time taken: {:?}", start_time.elapsed());
-        // assert!(decoded.is_some(), "Failed to decode QR code");
+        assert!(decoded.is_some(), "Failed to decode QR code");
         println!("Decoded QR code: {:?}", decoded);
     }    
 }

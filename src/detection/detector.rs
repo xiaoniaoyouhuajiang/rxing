@@ -116,12 +116,13 @@ impl Detector for YoloQrDetector {
 mod tests {
     use usls::{Annotator, DataLoader, Style, SKELETON_COCO_19, SKELETON_COLOR_COCO_19};
 
+    use crate::detection::resource::{get_asset_path, get_or_download_model_path};
+
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn test_model_forward() {
-        let model_path = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let model_path = get_or_download_model_path().unwrap();
         let annotator = Annotator::default()
         .with_obb_style(Style::obb().with_draw_fill(true))
         .with_hbb_style(
@@ -148,8 +149,8 @@ mod tests {
             .with_iou(NMS_IOU_THRESHOLD)
             .with_topk(10);
         let mut model = YOLO::new(config.commit().expect("Failed to commit config")).unwrap();
-        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
-        let dataloader = DataLoader::new(image_path).unwrap().with_batch(1).build().unwrap();
+        let image_path = get_asset_path("qr_entity.png");
+        let dataloader = DataLoader::new(image_path.to_str().expect("Failed to convert path to str")).unwrap().with_batch(1).build().unwrap();
         for image in &dataloader {
             // forward() 包含了预处理、推理和后处理的完整流程
             let results = model.forward(&image).unwrap();
@@ -158,7 +159,7 @@ mod tests {
             let mut count = 0;
             for (x, y) in image.iter().zip(results.iter()) {
                 println!("Detected objects: {:?}", y);
-                annotator.annotate(x, y).expect("annotate failed").save(format!("/Users/wangjiajie/software/rxing/assets/qr_entity_{}.jpg", count)).unwrap();
+                annotator.annotate(x, y).expect("annotate failed").save(get_asset_path(format!("qr_entity_{}.jpg", count).as_str())).expect("Failed to save annotated image");
                 count += 1;
             }
         }
@@ -166,9 +167,9 @@ mod tests {
 
     #[test]
     fn test_detector() {
-        let model_path = PathBuf::from("/Users/wangjiajie/software/rxing/assets/qrdet-s.onnx");
+        let model_path = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = "/Users/wangjiajie/software/rxing/assets/qr_entity.png";
+        let image_path = get_asset_path("qr_entity.png");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let results = detector.detect(images);

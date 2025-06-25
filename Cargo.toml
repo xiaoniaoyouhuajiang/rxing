@@ -14,9 +14,13 @@ pyo3 = "0.24.0"
 rayon = "1.10.0"
 anyhow = "1.0.98"
 faer = "0.20.1"
+sha2 = "0.10.9"
 image = { version = "0.25", optional = true } 
 imageproc = "0.25.0"
+directories = "5.0"
 usls = { git = "https://github.com/jamjamjon/usls" }
+reqwest = { version = "0.12" , features = ["blocking"]}
+hex = "0.4.3"
 
 [features]
 default = ["image"]
