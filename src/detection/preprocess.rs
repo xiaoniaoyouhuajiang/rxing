@@ -22,7 +22,7 @@ pub fn enhance_and_decode_qr(
     );
 
     // 1. 透视校正 (Perspective Correction)
-    let corrected_perspective = match correct_perspective(full_image.to_rgb8(), detection.quad_xy) {
+    let corrected_perspective = match correct_perspective(full_image.to_rgb8(), detection.quad_xy_largest) {
         Ok(img) => img,
         Err(_) => return None, // 如果校正失败，则提前退出
     };
@@ -202,15 +202,17 @@ mod test{
     fn test_correct_perspective() {
         let model_path: PathBuf = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = get_asset_path("qr_entity.png");
+        // let image_path = get_asset_path("qr_entity.png");
+        let image_path = get_asset_path("qr_perspective.jpg");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();
         let results = detector.detect(images);
         assert!(!results.is_empty(), "No detection results found");
-        let corrected = correct_perspective(image, results[0].quad_xy)
+        let corrected = correct_perspective(image, results[0].quad_xy_largest)
             .expect("Failed to correct perspective");
-        corrected.save("/Users/wangjiajie/software/rxing/assets/corrected_perspective.png").expect("Failed to save corrected image");
+        let save_path = get_asset_path("corrected_perspective.png");
+        corrected.save(save_path).expect("Failed to save corrected image");
     }
 
     #[test]
@@ -243,7 +245,7 @@ mod test{
     fn test_normal_qr_pipeline() {
         let model_path: PathBuf = get_or_download_model_path().unwrap();
         let mut detector = YoloQrDetector::new(&model_path);
-        let image_path = get_asset_path("multi_qr.jpg");
+        let image_path = get_asset_path("qr_perspective.jpg");
         let images = Image::try_read(image_path)
             .expect("Failed to read image");
         let image = images.to_rgb8();

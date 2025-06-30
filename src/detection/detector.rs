@@ -10,7 +10,7 @@ const CONF_THRESHOLD: f32 = 0.5; // 对应 qrdet 的 conf_th
 const NMS_IOU_THRESHOLD: f32 = 0.3; // 对应 qrdet 的 nms_iou
 
 pub struct DetectionResult {
-    pub quad_xy: [[f32; 2]; 4],
+    pub quad_xy_largest: [[f32; 2]; 4],
     // 从YOLO模型获得的原始 xyxy 边界框
     pub bbox_xyxy: [f32; 4],
 }
@@ -81,7 +81,7 @@ pub fn y_to_detection_results(y: Y) -> Result<Vec<DetectionResult>> {
                 let bbox_xyxy = [hbb.x(), hbb.y(), hbb.x() + hbb.w(), hbb.y() + hbb.h()];
 
                 Some(DetectionResult {
-                    quad_xy: quad_xy,
+                    quad_xy_largest: quad_xy,
                     bbox_xyxy: bbox_xyxy,
                 })
             } else {
@@ -175,7 +175,7 @@ mod tests {
         let results = detector.detect(images);
         assert!(!results.is_empty(), "No detection results found");
         for result in &results {
-            println!("Detected quad: {:?}", result.quad_xy);
+            println!("Detected quad: {:?}", result.quad_xy_largest);
             println!("Detected bbox: {:?}", result.bbox_xyxy);
         }
     }

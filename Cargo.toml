@@ -24,3 +24,6 @@ hex = "0.4.3"
 
 [features]
 default = ["image"]
+
+[profile.test]
+inherits = "release"
