@@ -56,10 +56,26 @@ jobs:
         run: |
           cargo test -p rxing-detection detection::detector::tests::test_detector
           cargo test -p rxing-detection --all-features --verbose
-
+      - name: Create and configure virtual environment
+        run: |
+          python -m venv .venv
+          echo ".venv/bin" >> $GITHUB_PATH 
+          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
+        shell: bash
+        if: runner.os != 'Windows'
+      - name: Create and configure virtual environment (Windows)
+        run: |
+          python -m venv .venv
+          echo ".venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "VIRTUAL_ENV=$PWD\.venv" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
+        if: runner.os == 'Windows'
+      # - name: Install Python dependencies
+      #   run: pip install maturin pytest Pillow numpy
       - name: Install Python dependencies
-        run: pip install maturin pytest Pillow numpy
-
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin pytest
       - name: Run Python tests (default features)
         run: |
           maturin develop --manifest-path rxing-python/Cargo.toml

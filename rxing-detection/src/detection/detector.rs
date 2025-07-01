@@ -114,7 +114,7 @@ impl Detector for YoloQrDetector {
 
 #[cfg(test)]
 mod tests {
-    use usls::{Annotator, DataLoader, Style, SKELETON_COCO_19, SKELETON_COLOR_COCO_19};
+    use usls::DataLoader;
 
     use crate::detection::resource::{get_asset_path, get_or_download_model_path};
 
@@ -123,21 +123,21 @@ mod tests {
     #[test]
     fn test_model_forward() {
         let model_path = get_or_download_model_path().unwrap();
-        let annotator = Annotator::default()
-        .with_obb_style(Style::obb().with_draw_fill(true))
-        .with_hbb_style(
-            Style::hbb()
-                .with_draw_fill(true)
-                .with_palette(&usls::Color::palette_coco_80()),
-        )
-        .with_keypoint_style(
-            Style::keypoint()
-                .with_skeleton((SKELETON_COCO_19, SKELETON_COLOR_COCO_19).into())
-                .show_confidence(false)
-                .show_id(true)
-                .show_name(false),
-        )
-        .with_mask_style(Style::mask().with_draw_mask_polygon_largest(true).with_draw_mask_hbbs(true));
+        // let annotator = Annotator::default()
+        // .with_obb_style(Style::obb().with_draw_fill(true))
+        // .with_hbb_style(
+        //     Style::hbb()
+        //         .with_draw_fill(true)
+        //         .with_palette(&usls::Color::palette_coco_80()),
+        // )
+        // .with_keypoint_style(
+        //     Style::keypoint()
+        //         .with_skeleton((SKELETON_COCO_19, SKELETON_COLOR_COCO_19).into())
+        //         .show_confidence(false)
+        //         .show_id(true)
+        //         .show_name(false),
+        // )
+        // .with_mask_style(Style::mask().with_draw_mask_polygon_largest(true).with_draw_mask_hbbs(true));
         let config = Config::yolo()
             .with_model_file(&model_path.to_string_lossy())
             .with_version(8.try_into().expect("Invalid YOLO version"))
@@ -152,15 +152,11 @@ mod tests {
         let image_path = get_asset_path("qr_entity.png");
         let dataloader = DataLoader::new(image_path.to_str().expect("Failed to convert path to str")).unwrap().with_batch(1).build().unwrap();
         for image in &dataloader {
-            // forward() 包含了预处理、推理和后处理的完整流程
             let results = model.forward(&image).unwrap();
             assert_eq!(results.len(), 1);
-            // assert_eq!(results[0].hbbs().unwrap().len(), 3);
-            let mut count = 0;
-            for (x, y) in image.iter().zip(results.iter()) {
+            for (_, y) in image.iter().zip(results.iter()) {
                 println!("Detected objects: {:?}", y);
-                annotator.annotate(x, y).expect("annotate failed").save(get_asset_path(format!("qr_entity_{}.jpg", count).as_str())).expect("Failed to save annotated image");
-                count += 1;
+                // annotator.annotate(x, y).expect("annotate failed").save(get_asset_path(format!("qr_entity_{}.jpg", count).as_str())).expect("Failed to save annotated image");
             }
         }
     }
