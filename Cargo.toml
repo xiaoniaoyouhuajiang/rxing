@@ -15,4 +15,4 @@ license = "Apache-2.0"
 inherits = "release"
 
 [workspace.dependencies]
-usls = { git = "https://github.com/jamjamjon/usls" }
+usls = {git="https://github.com/jamjamjon/usls"}

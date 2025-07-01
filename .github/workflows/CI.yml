@@ -52,7 +52,9 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run Rust tests for all workspace members
+      # download the pretrained model first to avoid checksum mismatch
         run: |
+          cargo test -p rxing-detection detection::detector::tests::test_detector
           cargo test -p rxing-detection --all-features --verbose
 
       - name: Install Python dependencies
