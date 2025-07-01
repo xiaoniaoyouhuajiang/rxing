@@ -39,6 +39,27 @@ jobs:
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install ONNX Runtime (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh # 使用 PowerShell 以方便执行下载和解压命令
+        run: |
+          # install onnxruntime.dll
+          $ORT_VERSION = "1.22.0"
+          $ORT_URL = "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-1.22.0.zip"
+          $ORT_ZIP_FILE = "onnxruntime.zip"
+          $ORT_EXTRACT_DIR = "ort-runtime"
+
+          echo "Downloading ONNX Runtime v$($ORT_VERSION)..."
+          Invoke-WebRequest -Uri $ORT_URL -OutFile $ORT_ZIP_FILE
+
+          echo "Extracting ONNX Runtime..."
+          Expand-Archive -Path $ORT_ZIP_FILE -DestinationPath $ORT_EXTRACT_DIR
+
+          $ORT_LIB_PATH = (Get-ChildItem -Path $ORT_EXTRACT_DIR -Recurse -Directory -Filter "lib").FullName
+          
+          echo "ONNX Runtime library path: $ORT_LIB_PATH"
+          echo "Adding to PATH environment variable..."
+          echo $ORT_LIB_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -117,6 +138,13 @@ jobs:
           args: --release --out dist --find-interpreter --features detection
           # The output wheel filename will be different due to feature flags,
           # e.g., rxing-0.2.0+detection-cp38-cp38-manylinux_x86_64.whl
+
+      - name: Repair wheels with delvewheel (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          pip install delvewheel
+          delvewheel repair --wheel-dir dist
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
