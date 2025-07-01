@@ -14,7 +14,19 @@ rxing = "0.7.1"
 pyo3 = "0.24.0"
 image = { version = "0.25", optional = true }
 rxing-detection = { path = "../rxing-detection", optional = true }
-usls = { workspace = true, optional = true}
+# usls = { workspace = true, optional = true}
+
+[target.'cfg(windows)'.dependencies.usls]
+git = "https://github.com/jamjamjon/usls"
+default-features = false
+features = ["ort-load-dynamic"]
+optional = true
+
+# 当目标平台不是 Windows (即 Linux, macOS 等) 时，使用以下配置
+[target.'cfg(not(windows))'.dependencies.usls]
+git = "https://github.com/jamjamjon/usls"
+optional = true
+
 
 [features]
 default = ["image"]
