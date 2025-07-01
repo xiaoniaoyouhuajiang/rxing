@@ -3302,6 +3302,16 @@ checksum = "eded382c5f5f786b989652c49544c4877d9f015cc22e145a5ea8ea66c2921cd2"
 
 [[package]]
 name = "rxing"
+version = "0.2.0"
+dependencies = [
+ "image",
+ "pyo3",
+ "rxing 0.7.1",
+ "rxing-detection",
+]
+
+[[package]]
+name = "rxing"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d94fd9d595e62b2c9ee033626bf28218da9cf3b3196f20d7e2c004a702bda71c"
@@ -3325,18 +3335,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "rxing-one-d-proc-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cee044776de75d7df23e58bfbc8799d859c2980ee247bb9bf925e4fd7d8cc6d"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rxing_lib"
-version = "0.1.0"
+name = "rxing-detection"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "directories",
@@ -3347,9 +3347,19 @@ dependencies = [
  "pyo3",
  "rayon",
  "reqwest",
- "rxing",
+ "rxing 0.7.1",
  "sha2",
  "usls",
+]
+
+[[package]]
+name = "rxing-one-d-proc-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cee044776de75d7df23e58bfbc8799d859c2980ee247bb9bf925e4fd7d8cc6d"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]

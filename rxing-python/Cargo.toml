@@ -1,0 +1,20 @@
+[package]
+name = "rxing"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "rxing_lib"
+crate-type = ["cdylib"]
+
+[dependencies]
+rxing = "0.7.1"
+pyo3 = "0.24.0"
+image = { version = "0.25", optional = true }
+rxing-detection = { path = "../rxing-detection", optional = true }
+
+[features]
+default = ["image"]
+detection = ["dep:rxing-detection"]

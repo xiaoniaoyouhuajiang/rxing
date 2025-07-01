@@ -12,7 +12,7 @@ const MODEL_CHECK_SUM: &str = "8e222ebdacd50dd0c6f3a8bb2b22ead6c2017a2e33627e974
 pub fn get_asset_path(asset_name: &str) -> std::path::PathBuf {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let mut path = std::path::PathBuf::from(manifest_dir);
-    path.push("assets");
+    path.push("../assets");
     path.push(asset_name);
     path
 }
