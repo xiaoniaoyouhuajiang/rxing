@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use {
     image::DynamicImage,
     rxing_detection::{
-        self as detector, Detector, YoloQrDetector,
+        Detector, YoloQrDetector,
         enhance_and_decode_qr, get_or_download_model_path,
     },
     usls::Image as UslsImage,
@@ -271,7 +271,7 @@ fn decode_from_file_path(
 #[cfg(feature = "detection")]
 #[pyfunction]
 fn decode_barcode_with_detection(
-    py: Python,
+    _py: Python,
     image_file_bytes: &[u8],
     _hints_dict: Option<&Bound<PyDict>>, // hints not used yet, but kept for API consistency
 ) -> PyResult<Option<String>> {
@@ -283,7 +283,7 @@ fn decode_barcode_with_detection(
     let mut detector = YoloQrDetector::new(&model_path);
 
     // 3. Load image from bytes
-    let usls_image = UslsImage::try_from_bytes(image_file_bytes)
+    let usls_image = UslsImage::try_from(image::load_from_memory(image_file_bytes).unwrap())
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Failed to load image for detection: {}", e)))?;
     
     let dynamic_image = image::load_from_memory(image_file_bytes)

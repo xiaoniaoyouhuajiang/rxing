@@ -13,3 +13,6 @@ license = "Apache-2.0"
 
 [profile.test]
 inherits = "release"
+
+[workspace.dependencies]
+usls = { git = "https://github.com/jamjamjon/usls" }
