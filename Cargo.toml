@@ -1,17 +1,18 @@
-[package]
-name = "rxing_lib"
-version = "0.1.0"
+[workspace]
+members = [
+    "rxing-detection",
+    "rxing-python",
+]
+resolver = "2" # 推荐使用最新的依赖解析器
+
+[workspace.package]
+version = "0.2.0"
+authors = ["xiaoniaoyouhuajiang <lie800bili@gamil.com>"]
 edition = "2021"
+license = "Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-name = "rxing_lib"
-crate-type = ["cdylib"]
+[profile.test]
+inherits = "release"
 
-[dependencies]
-rxing = "0.7.1"
-pyo3 = "0.24.0"
-image = { version = "0.25", optional = true } 
-
-[features]
-default = ["image"]
+[workspace.dependencies]
+usls = {git="https://github.com/jamjamjon/usls"}

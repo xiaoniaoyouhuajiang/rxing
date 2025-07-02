@@ -8,6 +8,18 @@ use rxing::{
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+// Conditional imports for the 'detection' feature
+#[cfg(feature = "detection")]
+use {
+    image::DynamicImage,
+    rxing_detection::{
+        Detector, YoloQrDetector,
+        enhance_and_decode_qr, get_or_download_model_path,
+    },
+    usls::Image as UslsImage,
+};
+
+
 #[pyclass(name = "RXingResult")]
 #[derive(Clone)]
 struct PyRXingResult {
@@ -51,7 +63,6 @@ impl From<InnerRXingResult> for PyRXingResult {
     }
 }
 
-// PyPoint 定义
 #[pyclass(name = "Point")]
 #[derive(Clone, Debug)]
 struct PyPoint {
@@ -61,7 +72,6 @@ struct PyPoint {
     y: f32,
 }
 
-// PyBitMatrix 定义 (如果包含编码功能)
 #[pyclass(name = "BitMatrix")]
 #[derive(Clone)]
 struct PyBitMatrix {
@@ -86,7 +96,6 @@ impl PyBitMatrix {
         }
         data
     }
-    // 可以添加 to_pil_image (需要 Python 端处理) 或 save 方法
 }
 
 impl From<rxing::common::BitMatrix> for PyBitMatrix {
@@ -128,7 +137,6 @@ fn py_dict_to_decode_hints(
                 }
                 "CHARACTER_SET" => hints.CharacterSet = Some(value_any.extract()?),
                 "ALSO_INVERTED" => hints.AlsoInverted = Some(value_any.extract()?),
-                // TODO: Implement more hint conversions as needed
                 _ => {
                     eprintln!("Warning: Unknown decode hint: {}", key_str);
                 }
@@ -260,7 +268,53 @@ fn decode_from_file_path(
     }
 }
 
-// --- ENCODING FUNCTION ---
+#[cfg(feature = "detection")]
+#[pyfunction]
+fn decode_barcode_with_detection(
+    _py: Python,
+    image_file_bytes: &[u8],
+    _hints_dict: Option<&Bound<PyDict>>, // hints not used yet, but kept for API consistency
+) -> PyResult<Option<String>> {
+    // 1. Get model path (downloads if necessary)
+    let model_path = get_or_download_model_path()
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to get model: {}", e)))?;
+
+    // 2. Initialize detector
+    let mut detector = YoloQrDetector::new(&model_path);
+
+    // 3. Load image from bytes
+    let usls_image = UslsImage::try_from(image::load_from_memory(image_file_bytes).unwrap())
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Failed to load image for detection: {}", e)))?;
+    
+    let dynamic_image = image::load_from_memory(image_file_bytes)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Failed to load image for decoding: {}", e)))?;
+
+    // 4. Detect barcodes
+    let detections = detector.detect(usls_image);
+    if detections.is_empty() {
+        return Ok(None);
+    }
+
+    // 5. Attempt to decode each detection
+    // This part could be parallelized if multiple detections are common
+    for detection in &detections {
+        let decoder_closure = |img: &DynamicImage| {
+            let luma_source = BufferedImageLuminanceSource::new(img.clone());
+            let binarizer = HybridBinarizer::new(luma_source);
+            let mut binary_bitmap = BinaryBitmap::new(binarizer);
+            let mut reader = MultiFormatReader::default();
+            reader.decode(&mut binary_bitmap).ok().map(|result| result.getText().to_string())
+        };
+
+        if let Some(decoded_text) = enhance_and_decode_qr(&dynamic_image, detection, &decoder_closure) {
+            return Ok(Some(decoded_text)); // Return the first successful decoding
+        }
+    }
+
+    Ok(None) // No barcode could be decoded
+}
+
+
 #[pyfunction]
 fn encode(
     py: Python,
@@ -297,6 +351,9 @@ fn rxing_py_module(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "image")]
     m.add_function(wrap_pyfunction!(decode_from_file_path, m)?)?;
     m.add_function(wrap_pyfunction!(encode, m)?)?;
+
+    #[cfg(feature = "detection")]
+    m.add_function(wrap_pyfunction!(decode_barcode_with_detection, m)?)?;
 
     let py_barcode_format_module = PyModule::new(_py, "BarcodeFormat")?;
     py_barcode_format_module.add("AZTEC", BarcodeFormat::AZTEC.to_string())?;
