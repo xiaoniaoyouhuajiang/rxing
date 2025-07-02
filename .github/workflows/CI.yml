@@ -148,13 +148,13 @@ jobs:
         shell: pwsh
         run: |
           pip install delvewheel
-          delvewheel repair --wheel-dir dist
+          delvewheel repair --wheel-dir rxing-python/dist
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}
-          path: dist
+          path: rxing-python/dist
 
   release:
     name: Release to PyPI
@@ -168,17 +168,17 @@ jobs:
       - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: ls -R rxing-python/dist
           # No need to specify name, it will download all artifacts
 
       - name: List downloaded files
-        run: ls -R dist
+        run: ls -R ls -R rxing-python/dist
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         with:
           command: upload
-          args: --non-interactive --skip-existing dist/**/*.whl
+          args: --non-interactive --skip-existing rxing-python/dist/**/*.whl
           # The token can be provided via OIDC (trusted publishing) or a secret
           # For trusted publishing, no environment variable is needed.
           # For token, use:
@@ -189,6 +189,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/**/*.whl
+            rxing-python/dist/**/*.whl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
