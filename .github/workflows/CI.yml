@@ -132,13 +132,13 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           # We need to tell maturin where the python package is
-          manifest-path: rxing-python/Cargo.toml
+          working-directory: rxing-python
           args: --release --out dist --find-interpreter
 
       - name: Build wheels (with detection feature)
         uses: PyO3/maturin-action@v1
         with:
-          manifest-path: rxing-python/Cargo.toml
+          working-directory: rxing-python
           args: --release --out dist --find-interpreter --features detection
           # The output wheel filename will be different due to feature flags,
           # e.g., rxing-0.2.0+detection-cp38-cp38-manylinux_x86_64.whl
@@ -184,3 +184,11 @@ jobs:
           # For token, use:
           # env:
           #   MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
