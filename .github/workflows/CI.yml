@@ -148,7 +148,7 @@ jobs:
         shell: pwsh
         run: |
           pip install delvewheel
-          delvewheel repair --wheel-dir rxing-python/dist
+          delvewheel repair rxing-python/dist/*.whl
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
