@@ -101,50 +101,115 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install maturin pytest
-      - name: Run Python tests (default features)
-        run: |
-          maturin develop --manifest-path rxing-python/Cargo.toml
-          pytest tests/
-
       - name: Run Python tests (with detection feature)
         run: |
-          # Uninstall previous version first
-          pip uninstall -y rxing
           # Install with detection feature
           maturin develop --manifest-path rxing-python/Cargo.toml --features detection
           pytest tests/
 
-  build_wheels:
-    name: Build Wheels
-    runs-on: ${{ matrix.os }}
-    needs: test
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
-        # For macos-13, use target: x86_64
-        # For macos-14, use target: aarch64
+  # build_wheels:
+  #   name: Build Wheels
+  #   runs-on: ${{ matrix.os }}
+  #   needs: test
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest, windows-latest, macos-14]
+  #       # For macos-13, use target: x86_64
+  #       # For macos-14, use target: aarch64
 
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Build wheels (default features)
+  #       uses: PyO3/maturin-action@v1
+  #       with:
+  #         # We need to tell maturin where the python package is
+  #         working-directory: rxing-python
+  #         args: --release --out dist --find-interpreter
+
+  #     - name: Build wheels (with detection feature)
+  #       uses: PyO3/maturin-action@v1
+  #       with:
+  #         working-directory: rxing-python
+  #         args: --release --out dist --find-interpreter --features detection
+  #         # The output wheel filename will be different due to feature flags,
+  #         # e.g., rxing-0.2.0+detection-cp38-cp38-manylinux_x86_64.whl
+
+  #     - name: Repair wheels with delvewheel (Windows)
+  #       if: matrix.os == 'windows-latest'
+  #       shell: pwsh
+  #       run: |
+  #         pip install delvewheel
+  #         delvewheel repair rxing-python/dist/*.whl
+
+  #     - name: Upload wheels
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: wheels-${{ matrix.os }}
+  #         path: rxing-python/dist
+
+  linux:
+    name: Build Wheels (Linux)
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64, aarch64, armv7, ppc64le, s390x] # 主流架构
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build wheels (default features)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+      - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          # We need to tell maturin where the python package is
+          target: ${{ matrix.target }}
           working-directory: rxing-python
-          args: --release --out dist --find-interpreter
+          args: --release --out dist --features detection
+          manylinux: auto
+          sccache: 'true'
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.target }}
+          path: rxing-python/dist
 
-      - name: Build wheels (with detection feature)
+  windows:
+    name: Build Wheels (Windows)
+    needs: test
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+          architecture: ${{ matrix.target }}
+
+      - name: Install ONNX Runtime
+        shell: pwsh
+        run: |
+          $ORT_VERSION = "1.22.0"
+          $ORT_URL = "https://github.com/microsoft/onnxruntime/releases/download/v$($ORT_VERSION)/onnxruntime-win-${{ matrix.target }}-$($ORT_VERSION).zip"
+          $ORT_ZIP_FILE = "onnxruntime.zip"
+          $ORT_EXTRACT_DIR = "ort-runtime"
+          Invoke-WebRequest -Uri $ORT_URL -OutFile $ORT_ZIP_FILE
+          Expand-Archive -Path $ORT_ZIP_FILE -DestinationPath $ORT_EXTRACT_DIR
+          $ORT_LIB_PATH = (Get-ChildItem -Path $ORT_EXTRACT_DIR -Recurse -Directory -Filter "lib").FullName
+          echo $ORT_LIB_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
+          target: ${{ matrix.target }}
           working-directory: rxing-python
-          args: --release --out dist --find-interpreter --features detection
-          # The output wheel filename will be different due to feature flags,
-          # e.g., rxing-0.2.0+detection-cp38-cp38-manylinux_x86_64.whl
+          args: --release --out dist --features detection
+          sccache: 'true'
 
-      - name: Repair wheels with delvewheel (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Repair wheels with delvewheel
         shell: pwsh
         run: |
           pip install delvewheel
@@ -153,14 +218,60 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-windows-${{ matrix.target }}
           path: rxing-python/dist
+
+  macos:
+    name: Build Wheels (macOS)
+    needs: test
+    runs-on: ${{ matrix.target == 'x86_64' && 'macos-13' || 'macos-14' }}
+    strategy:
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          working-directory: rxing-python
+          args: --release --out dist --features detection
+          sccache: 'true'
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.target }}
+          path: rxing-python/dist
+
+  sdist:
+    name: Build Source Distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: rxing-python
+          args: --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: rxing-python/dist
+
 
   release:
     name: Release to PyPI
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build_wheels
+    # needs: build_wheels
+    needs: [linux, windows, macos, sdist]
     permissions:
       id-token: write # Required for trusted publishing
 
@@ -168,17 +279,17 @@ jobs:
       - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
-          path: ls -R rxing-python/dist
+          path: dist
           # No need to specify name, it will download all artifacts
 
       - name: List downloaded files
-        run: ls -R ls -R rxing-python/dist
+        run: dist
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         with:
           command: upload
-          args: --non-interactive --skip-existing rxing-python/dist/**/*.whl
+          args: --non-interactive --skip-existing "dist/**/*.whl" "dist/**/*.tar.gz"
           # The token can be provided via OIDC (trusted publishing) or a secret
           # For trusted publishing, no environment variable is needed.
           # For token, use:
