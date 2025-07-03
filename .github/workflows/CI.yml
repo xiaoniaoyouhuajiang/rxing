@@ -156,12 +156,11 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, aarch64, armv7, ppc64le, s390x] # 主流架构
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: 3.8
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -183,12 +182,11 @@ jobs:
     strategy:
       matrix:
         target: [x64, x86]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.8'
           architecture: ${{ matrix.target }}
 
       - name: Install ONNX Runtime
@@ -230,9 +228,12 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, aarch64]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -257,7 +258,7 @@ jobs:
         with:
           command: sdist
           working-directory: rxing-python
-          args: --out dist --features detection
+          args: --out dist
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
